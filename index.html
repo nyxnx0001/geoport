@@ -1,69 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>GeoPort DEBUG</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <title>GeoPort Map</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 
-<style>
-body { margin:0; height:100vh; display:flex; flex-direction:column; }
-#map { flex:1; }
-.controls { padding:10px; background:#eee; }
-button { padding:15px; font-size:18px; }
-</style>
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body { margin:0; height:100vh; display:flex; flex-direction:column; }
+        #map { flex:1; }
+        button { padding:12px; font-size:16px; }
+    </style>
 </head>
 
 <body>
 
 <div id="map"></div>
-
-<div class="controls">
-<button id="set">📍 УСТАНОВИТЬ (DEBUG)</button>
-</div>
+<button onclick="sendLocation()">📍 Установить локацию</button>
 
 <script>
-const tg = window.Telegram.WebApp;
+    const tg = window.Telegram.WebApp;
 
-// 🔥 ЖЁСТКАЯ ПРОВЕРКА
-alert(
-  "Telegram object: " + !!tg + "\n" +
-  "initData: " + tg.initData + "\n" +
-  "version: " + tg.version
-);
+    // 🔥🔥🔥 БЕЗ ЭТОГО iOS НЕ РАБОТАЕТ
+    tg.ready();
+    tg.expand();
 
-tg.expand();
+    alert("WebApp READY");
 
-let lat = 55.7558;
-let lon = 37.6173;
+    let lat = 55.7558;
+    let lon = 37.6173;
 
-const map = L.map("map").setView([lat, lon], 10);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    const map = L.map('map').setView([lat, lon], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-map.on("click", e => {
-  lat = e.latlng.lat;
-  lon = e.latlng.lng;
-  L.marker([lat, lon]).addTo(map);
-});
+    let marker = L.marker([lat, lon]).addTo(map);
 
-document.getElementById("set").onclick = () => {
-  const payload = {
-    action: "set_location",
-    lat, lon
-  };
+    map.on('click', e => {
+        lat = e.latlng.lat;
+        lon = e.latlng.lng;
+        marker.setLatLng([lat, lon]);
+    });
 
-  alert("SEND DATA:\n" + JSON.stringify(payload));
+    function sendLocation() {
+        const data = {
+            action: "set_location",
+            lat: lat,
+            lon: lon
+        };
 
-  try {
-    tg.sendData(JSON.stringify(payload));
-    alert("sendData() ВЫЗВАН");
-  } catch (e) {
-    alert("sendData ERROR:\n" + e);
-  }
-};
+        alert("sendData()");
+        tg.sendData(JSON.stringify(data));
+        alert("sent");
+    }
 </script>
 
 </body>
