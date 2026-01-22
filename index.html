@@ -1,32 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8" />
-    <title>GeoPort Map</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<title>GeoPort Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <style>
-        body { margin: 0; height: 100vh; display: flex; flex-direction: column; }
-        #map { flex: 1; }
-        .controls { padding: 10px; background: #eee; display: flex; flex-direction: column; gap: 8px; }
-        input, button { padding: 10px; font-size: 16px; }
-        button { background: #3390ec; color: white; border: none; border-radius: 4px; }
-        #fav { background: #28a745; }
-    </style>
+<style>
+body { margin:0; height:100vh; display:flex; flex-direction:column; }
+#map { flex:1; }
+.controls { padding:10px; background:#eee; display:flex; flex-direction:column; gap:8px; }
+input,button { padding:10px; font-size:16px; }
+button { border:none; border-radius:4px; background:#3390ec; color:#fff; }
+#fav { background:#28a745; }
+</style>
 </head>
+
 <body>
 
 <div id="map"></div>
 
 <div class="controls">
-    <input id="address" placeholder="Введите адрес">
-    <button id="search">🔍 Найти</button>
-    <button id="set">📍 Установить</button>
-    <button id="fav">⭐ В избранное</button>
+<input id="address" placeholder="Адрес">
+<button id="search">🔍 Найти</button>
+<button id="set">📍 Установить</button>
+<button id="fav">⭐ В избранное</button>
 </div>
 
 <script>
@@ -42,40 +43,38 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19
 }).addTo(map);
 
-function setMarker(a, b) {
-    lat = a; lon = b;
-    if (marker) marker.setLatLng([a, b]);
-    else marker = L.marker([a, b]).addTo(map);
-    map.panTo([a, b]);
+function setMarker(a,b){
+    lat=a; lon=b;
+    if(marker) marker.setLatLng([a,b]);
+    else marker=L.marker([a,b]).addTo(map);
+    map.panTo([a,b]);
 }
 
 map.on("click", e => setMarker(e.latlng.lat, e.latlng.lng));
-setMarker(lat, lon);
+setMarker(lat,lon);
 
-document.getElementById("search").onclick = async () => {
-    const q = address.value;
-    if (!q) return;
-
+search.onclick = async () => {
+    if(!address.value) return;
     const r = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address.value)}`,
         { headers: { "User-Agent": "GeoPortBot/1.0" } }
     );
     const d = await r.json();
-    if (d[0]) setMarker(+d[0].lat, +d[0].lon);
+    if(d[0]) setMarker(+d[0].lat, +d[0].lon);
 };
 
-document.getElementById("set").onclick = () => {
+set.onclick = () => {
     tg.sendData(JSON.stringify({
-        action: "set_location",
+        action:"set_location",
         lat, lon
     }));
 };
 
-document.getElementById("fav").onclick = () => {
+fav.onclick = () => {
     const name = prompt("Название");
-    if (!name) return;
+    if(!name) return;
     tg.sendData(JSON.stringify({
-        action: "add_favorite",
+        action:"add_favorite",
         name, lat, lon
     }));
 };
