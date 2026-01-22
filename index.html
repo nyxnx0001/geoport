@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>GeoPort Map</title>
+<title>GeoPort DEBUG</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -12,10 +12,8 @@
 <style>
 body { margin:0; height:100vh; display:flex; flex-direction:column; }
 #map { flex:1; }
-.controls { padding:10px; background:#eee; display:flex; flex-direction:column; gap:8px; }
-input,button { padding:10px; font-size:16px; }
-button { border:none; border-radius:4px; background:#3390ec; color:#fff; }
-#fav { background:#28a745; }
+.controls { padding:10px; background:#eee; }
+button { padding:15px; font-size:18px; }
 </style>
 </head>
 
@@ -24,59 +22,47 @@ button { border:none; border-radius:4px; background:#3390ec; color:#fff; }
 <div id="map"></div>
 
 <div class="controls">
-<input id="address" placeholder="Адрес">
-<button id="search">🔍 Найти</button>
-<button id="set">📍 Установить</button>
-<button id="fav">⭐ В избранное</button>
+<button id="set">📍 УСТАНОВИТЬ (DEBUG)</button>
 </div>
 
 <script>
 const tg = window.Telegram.WebApp;
+
+// 🔥 ЖЁСТКАЯ ПРОВЕРКА
+alert(
+  "Telegram object: " + !!tg + "\n" +
+  "initData: " + tg.initData + "\n" +
+  "version: " + tg.version
+);
+
 tg.expand();
 
 let lat = 55.7558;
 let lon = 37.6173;
-let marker;
 
 const map = L.map("map").setView([lat, lon], 10);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
-}).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-function setMarker(a,b){
-    lat=a; lon=b;
-    if(marker) marker.setLatLng([a,b]);
-    else marker=L.marker([a,b]).addTo(map);
-    map.panTo([a,b]);
-}
+map.on("click", e => {
+  lat = e.latlng.lat;
+  lon = e.latlng.lng;
+  L.marker([lat, lon]).addTo(map);
+});
 
-map.on("click", e => setMarker(e.latlng.lat, e.latlng.lng));
-setMarker(lat,lon);
+document.getElementById("set").onclick = () => {
+  const payload = {
+    action: "set_location",
+    lat, lon
+  };
 
-search.onclick = async () => {
-    if(!address.value) return;
-    const r = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address.value)}`,
-        { headers: { "User-Agent": "GeoPortBot/1.0" } }
-    );
-    const d = await r.json();
-    if(d[0]) setMarker(+d[0].lat, +d[0].lon);
-};
+  alert("SEND DATA:\n" + JSON.stringify(payload));
 
-set.onclick = () => {
-    tg.sendData(JSON.stringify({
-        action:"set_location",
-        lat, lon
-    }));
-};
-
-fav.onclick = () => {
-    const name = prompt("Название");
-    if(!name) return;
-    tg.sendData(JSON.stringify({
-        action:"add_favorite",
-        name, lat, lon
-    }));
+  try {
+    tg.sendData(JSON.stringify(payload));
+    alert("sendData() ВЫЗВАН");
+  } catch (e) {
+    alert("sendData ERROR:\n" + e);
+  }
 };
 </script>
 
