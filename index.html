@@ -1,148 +1,85 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GeoPort Map</title>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
-    <!-- Стили и скрипты карты (Leaflet) -->
+    <title>GeoPort Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Скрипт Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <style>
-        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; }
-        #map { flex-grow: 1; }
-        .controls { 
-            padding: 10px; 
-            background: #f0f0f0; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
-            border-top: 1px solid #ccc;
-        }
-        .search-box { display: flex; gap: 5px; }
-        input { flex: 1; padding: 8px; border: 1px solid #999; border-radius: 4px; }
-        button { 
-            padding: 10px; 
-            border: none; 
-            border-radius: 4px; 
-            background: #3390ec; 
-            color: white; 
-            font-size: 16px; 
-            cursor: pointer; 
-        }
-        button:active { opacity: 0.8; }
-        #add-fav { background: #28a745; }
-        #status { text-align: center; font-size: 12px; color: #555; }
+        body { margin: 0; height: 100vh; display: flex; flex-direction: column; }
+        #map { flex: 1; }
+        .controls { padding: 10px; background: #eee; display: flex; flex-direction: column; gap: 8px; }
+        input, button { padding: 10px; font-size: 16px; }
+        button { background: #3390ec; color: white; border: none; border-radius: 4px; }
+        #fav { background: #28a745; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <div class="controls">
-        <div class="search-box">
-            <input type="text" id="address" placeholder="Введите адрес...">
-            <button id="btn-search">🔍</button>
-        </div>
-        <button id="btn-set">📍 Установить локацию</button>
-        <button id="add-fav">⭐ В избранное</button>
-        <div id="status">Выберите точку на карте</div>
-    </div>
+<div class="controls">
+    <input id="address" placeholder="Введите адрес">
+    <button id="search">🔍 Найти</button>
+    <button id="set">📍 Установить</button>
+    <button id="fav">⭐ В избранное</button>
+</div>
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // Раскрыть на весь экран
+<script>
+const tg = window.Telegram.WebApp;
+tg.expand();
 
-        // Показываем, что страница загрузилась (ДЛЯ ОТЛАДКИ)
-        tg.showAlert("Карта загружена! Ver 2.0");
+let lat = 55.7558;
+let lon = 37.6173;
+let marker;
 
-        // Начальные координаты (Москва)
-        let curLat = 55.7558;
-        let curLon = 37.6173;
-        let marker = null;
+const map = L.map("map").setView([lat, lon], 10);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19
+}).addTo(map);
 
-        // Инициализация карты
-        const map = L.map('map').setView([curLat, curLon], 10);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19, attribution: '© OpenStreetMap'
-        }).addTo(map);
+function setMarker(a, b) {
+    lat = a; lon = b;
+    if (marker) marker.setLatLng([a, b]);
+    else marker = L.marker([a, b]).addTo(map);
+    map.panTo([a, b]);
+}
 
-        // Функция обновления маркера
-        function setMarker(lat, lon) {
-            curLat = lat;
-            curLon = lon;
-            if (marker) {
-                marker.setLatLng([lat, lon]);
-            } else {
-                marker = L.marker([lat, lon]).addTo(map);
-            }
-            map.panTo([lat, lon]);
-            document.getElementById('status').innerText = `Координаты: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-        }
+map.on("click", e => setMarker(e.latlng.lat, e.latlng.lng));
+setMarker(lat, lon);
 
-        // Клик по карте
-        map.on('click', (e) => {
-            setMarker(e.latlng.lat, e.latlng.lng);
-        });
+document.getElementById("search").onclick = async () => {
+    const q = address.value;
+    if (!q) return;
 
-        // Поиск адреса
-        document.getElementById('btn-search').addEventListener('click', async () => {
-            const query = document.getElementById('address').value;
-            if(!query) return;
-            document.getElementById('status').innerText = "Ищу...";
-            try {
-                const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-                const data = await resp.json();
-                if(data && data.length > 0) {
-                    setMarker(parseFloat(data[0].lat), parseFloat(data[0].lon));
-                } else {
-                    tg.showAlert("Адрес не найден");
-                }
-            } catch(e) {
-                tg.showAlert("Ошибка поиска");
-            }
-        });
+    const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`,
+        { headers: { "User-Agent": "GeoPortBot/1.0" } }
+    );
+    const d = await r.json();
+    if (d[0]) setMarker(+d[0].lat, +d[0].lon);
+};
 
-        // --- ГЛАВНАЯ КНОПКА: УСТАНОВИТЬ ЛОКАЦИЮ ---
-        document.getElementById('btn-set').addEventListener('click', () => {
-            // Формируем данные
-            const dataToSend = {
-                action: 'set_location',
-                lat: curLat,
-                lon: curLon
-            };
-            
-            // Превращаем в строку JSON
-            const jsonString = JSON.stringify(dataToSend);
+document.getElementById("set").onclick = () => {
+    tg.sendData(JSON.stringify({
+        action: "set_location",
+        lat, lon
+    }));
+};
 
-            // 1. Показываем отладку (ЧТОБЫ ВЫ ВИДЕЛИ, ЧТО НАЖАЛОСЬ)
-            tg.showAlert("Отправляю боту:\n" + jsonString);
+document.getElementById("fav").onclick = () => {
+    const name = prompt("Название");
+    if (!name) return;
+    tg.sendData(JSON.stringify({
+        action: "add_favorite",
+        name, lat, lon
+    }));
+};
+</script>
 
-            // 2. Отправляем боту
-            tg.sendData(jsonString);
-        });
-
-        // Кнопка избранного
-        document.getElementById('add-fav').addEventListener('click', () => {
-            const name = prompt("Название точки:", "Дом");
-            if(name) {
-                const data = {
-                    action: 'add_favorite',
-                    name: name,
-                    lat: curLat,
-                    lon: curLon
-                };
-                tg.sendData(JSON.stringify(data));
-            }
-        });
-
-        // Ставим начальный маркер
-        setMarker(curLat, curLon);
-
-    </script>
 </body>
 </html>
